@@ -1,8 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({
-  base: "/cow-solver/",
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? "/cow-solver/" : "/",
   plugins: [react()],
   define: {
     global: "globalThis"
@@ -19,4 +19,4 @@ export default defineConfig({
       "Cross-Origin-Embedder-Policy": "require-corp"
     }
   }
-});
+}));
