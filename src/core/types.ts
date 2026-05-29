@@ -28,7 +28,7 @@ export type SolverStatus = "sat" | "unsat" | "unknown";
 export interface SolveReport {
   status: SolverStatus;
   solution: CowSolution | null;
-  usedFallback: boolean;
+  engine: string;
   message?: string;
 }
 
@@ -36,7 +36,7 @@ export interface EnumerationReport {
   status: SolverStatus;
   solutions: CowSolution[];
   hitLimit: boolean;
-  usedFallback: boolean;
+  engine: string;
   message?: string;
 }
 

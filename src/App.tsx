@@ -13,7 +13,7 @@ import {
 import type { AnalysisReport, ColorId, CowPuzzle, CowSolution, CropBounds, EnumerationReport } from "./core/types";
 import { analyzeCells, isUnique } from "./puzzles/cows/analyzer";
 import { clonePuzzle, samplePuzzle } from "./puzzles/cows/examples";
-import { enumerateWithZ3, solveWithZ3 } from "./puzzles/cows/z3Solver";
+import { enumerateWithLocalSolver, solveWithLocalSolver } from "./puzzles/cows/localSolver";
 import { defaultCrop, samplePuzzleFromImage } from "./vision/imageGrid";
 
 type RunState = "idle" | "running";
@@ -42,9 +42,9 @@ function blankPuzzle(rows = 6, cols = 6): CowPuzzle {
 }
 
 function resizePuzzle(puzzle: CowPuzzle, rows: number, cols: number): CowPuzzle {
-  const fallback = firstColor(puzzle);
+  const defaultColor = firstColor(puzzle);
   const grid = Array.from({ length: rows }, (_, row) =>
-    Array.from({ length: cols }, (_, col) => puzzle.grid[row]?.[col] ?? fallback)
+    Array.from({ length: cols }, (_, col) => puzzle.grid[row]?.[col] ?? defaultColor)
   );
   return { ...puzzle, rows, cols, grid };
 }
@@ -108,7 +108,7 @@ export default function App() {
   const [message, setMessage] = useState("Upload a screenshot");
   const [solution, setSolution] = useState<CowSolution | null>(null);
   const [enumeration, setEnumeration] = useState<EnumerationReport | null>(null);
-  const [analysis, setAnalysis] = useState<(AnalysisReport & { usedFallback: boolean; message?: string }) | null>(null);
+  const [analysis, setAnalysis] = useState<(AnalysisReport & { engine: string; message?: string }) | null>(null);
   const sampleRequestRef = useRef(0);
 
   const solutionCowSet = useMemo(() => {
@@ -200,9 +200,9 @@ export default function App() {
     setMessage("Solving");
     resetDerived();
     try {
-      const result = await solveWithZ3(puzzle);
+      const result = solveWithLocalSolver(puzzle);
       setSolution(result.solution);
-      setMessage(result.status === "sat" ? (result.usedFallback ? "Solved with fallback" : "Solved with Z3") : "No solution");
+      setMessage(result.status === "sat" ? "Solved with local engine" : "No solution");
     } finally {
       setRunState("idle");
     }
@@ -213,7 +213,7 @@ export default function App() {
     setMessage("Enumerating");
     resetDerived();
     try {
-      const result = await enumerateWithZ3(puzzle, 500);
+      const result = enumerateWithLocalSolver(puzzle, 500);
       setEnumeration(result);
       setSolution(result.solutions[0] ?? null);
       setMessage(`${result.solutions.length} solution${result.solutions.length === 1 ? "" : "s"}${result.hitLimit ? " (limited)" : ""}`);
@@ -577,7 +577,7 @@ export default function App() {
             <div className="summary">
               <div><strong>{enumeration.solutions.length}</strong> solutions</div>
               <div>{enumeration.hitLimit ? "Limit reached" : "Complete within limit"}</div>
-              <div>{enumeration.usedFallback ? "Fallback engine" : "Z3 engine"}</div>
+              <div>{enumeration.engine}</div>
             </div>
           ) : null}
 
@@ -587,7 +587,7 @@ export default function App() {
               <div>{analysis.cells.forcedCow.length} forced cows</div>
               <div>{analysis.cells.forcedEmpty.length} forced empty</div>
               <div>{analysis.cells.undecided.length} undecided</div>
-              <div>{analysis.usedFallback ? "Fallback engine" : "Z3 engine"}</div>
+              <div>{analysis.engine}</div>
             </div>
           ) : null}
         </aside>

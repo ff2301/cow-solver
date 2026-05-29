@@ -1,31 +1,30 @@
 import type { AnalysisReport, CowPuzzle, CowSolution } from "../../core/types";
-import { analyzeFromSolutions } from "./fallbackSolver";
-import { enumerateWithZ3 } from "./z3Solver";
+import { analyzeFromSolutions, enumerateWithLocalSolver } from "./localSolver";
 
 export async function isUnique(puzzle: CowPuzzle): Promise<{
   hasSolution: boolean;
   unique: boolean;
-  usedFallback: boolean;
+  engine: string;
   message?: string;
 }> {
-  const result = await enumerateWithZ3(puzzle, 2);
+  const result = enumerateWithLocalSolver(puzzle, 2);
   return {
     hasSolution: result.solutions.length > 0,
     unique: result.solutions.length === 1 && !result.hitLimit,
-    usedFallback: result.usedFallback,
+    engine: result.engine,
     message: result.message
   };
 }
 
-export async function analyzeCells(puzzle: CowPuzzle, limit = 500): Promise<AnalysisReport & { usedFallback: boolean; message?: string }> {
-  const result = await enumerateWithZ3(puzzle, limit);
+export async function analyzeCells(puzzle: CowPuzzle, limit = 500): Promise<AnalysisReport & { engine: string; message?: string }> {
+  const result = enumerateWithLocalSolver(puzzle, limit);
   return {
     solutionCount: result.solutions.length,
     hitLimit: result.hitLimit,
     cells: result.solutions.length > 0
       ? analyzeFromSolutions(puzzle, result.solutions)
       : { forcedCow: [], forcedEmpty: [], undecided: [] },
-    usedFallback: result.usedFallback,
+    engine: result.engine,
     message: result.message
   };
 }
