@@ -326,7 +326,7 @@ export default function App() {
           )}
           <div className="controls-grid">
             <div className="size-presets" aria-label="board size presets">
-              {[6, 8, 9].map((size) => (
+              {[6, 8, 9, 12].map((size) => (
                 <button
                   key={size}
                   className={puzzle.rows === size && puzzle.cols === size ? "active" : ""}
@@ -509,8 +509,8 @@ export default function App() {
           <div
             className="board"
             style={{
-              gridTemplateColumns: `repeat(${puzzle.cols}, minmax(34px, 1fr))`,
-              gridTemplateRows: `repeat(${puzzle.rows}, minmax(34px, 1fr))`
+              gridTemplateColumns: `repeat(${puzzle.cols}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${puzzle.rows}, minmax(0, 1fr))`
             }}
           >
             {puzzle.grid.flatMap((row, rowIndex) =>
