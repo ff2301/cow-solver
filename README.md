@@ -7,7 +7,8 @@ Vite + React + TypeScript puzzle solver for the cow placement game.
 - Upload a screenshot from desktop or phone browser.
 - Sample a configurable grid from the screenshot into color regions.
 - Manually correct cell colors when image parsing is imperfect.
-- Solve with a local exact backtracking engine.
+- Solve with either a local exact DFS engine or a bundled JavaScript SAT engine.
+- Save the preferred solver locally and show elapsed time for comparison.
 - Check whether a puzzle is unsatisfiable, unique, or has multiple solutions.
 - Enumerate solutions with a configurable limit in code.
 - Analyze forced cow, forced empty, and undecided cells.
@@ -34,7 +35,7 @@ For phone upload on the same LAN, open the Network URL printed by Vite. The defa
 ## Structure
 
 - `src/core`: shared puzzle and solver data types.
-- `src/puzzles/cows`: cow puzzle examples, local solver, and analysis.
+- `src/puzzles/cows`: cow puzzle examples, solver implementations, and analysis.
 - `src/vision`: screenshot grid sampling and color clustering.
 - `src/App.tsx`: current React UI.
 

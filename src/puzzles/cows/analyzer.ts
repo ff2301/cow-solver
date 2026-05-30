@@ -1,13 +1,14 @@
-import type { AnalysisReport, CowPuzzle, CowSolution } from "../../core/types";
-import { analyzeFromSolutions, enumerateWithLocalSolver } from "./localSolver";
+import type { AnalysisReport, CowPuzzle, CowSolution, CowSolverId } from "../../core/types";
+import { analyzeFromSolutions } from "./localSolver";
+import { enumerateCowPuzzle } from "./solvers";
 
-export async function isUnique(puzzle: CowPuzzle): Promise<{
+export async function isUnique(puzzle: CowPuzzle, solverId: CowSolverId): Promise<{
   hasSolution: boolean;
   unique: boolean;
   engine: string;
   message?: string;
 }> {
-  const result = enumerateWithLocalSolver(puzzle, 2);
+  const result = enumerateCowPuzzle(puzzle, solverId, 2);
   return {
     hasSolution: result.solutions.length > 0,
     unique: result.solutions.length === 1 && !result.hitLimit,
@@ -16,8 +17,12 @@ export async function isUnique(puzzle: CowPuzzle): Promise<{
   };
 }
 
-export async function analyzeCells(puzzle: CowPuzzle, limit = 500): Promise<AnalysisReport & { engine: string; message?: string }> {
-  const result = enumerateWithLocalSolver(puzzle, limit);
+export async function analyzeCells(
+  puzzle: CowPuzzle,
+  solverId: CowSolverId,
+  limit = 500
+): Promise<AnalysisReport & { engine: string; message?: string }> {
+  const result = enumerateCowPuzzle(puzzle, solverId, limit);
   return {
     solutionCount: result.solutions.length,
     hitLimit: result.hitLimit,

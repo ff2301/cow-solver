@@ -10,20 +10,27 @@ import {
   Search,
   Upload
 } from "lucide-react";
-import type { AnalysisReport, ColorId, CowPuzzle, CowSolution, CropBounds, EnumerationReport } from "./core/types";
+import type { AnalysisReport, ColorId, CowPuzzle, CowSolution, CowSolverId, CropBounds, EnumerationReport } from "./core/types";
 import { analyzeCells, isUnique } from "./puzzles/cows/analyzer";
 import { clonePuzzle, samplePuzzle } from "./puzzles/cows/examples";
-import { enumerateWithLocalSolver, solveWithLocalSolver } from "./puzzles/cows/localSolver";
+import { enumerateCowPuzzle, solveCowPuzzle, solverOptions } from "./puzzles/cows/solvers";
 import { defaultCrop, samplePuzzleFromImage } from "./vision/imageGrid";
 
 type RunState = "idle" | "running";
 
 const CROP_SETTINGS_KEY = "cow-solver.crop-settings.v1";
+const SOLVER_PREFERENCE_KEY = "cow-solver.solver.v1";
 const SAMPLE_IMAGE_URL = `${import.meta.env.BASE_URL}sample-cow-puzzle.jpg`;
 
 interface CropSettings {
   crop: CropBounds;
   clusterThreshold: number;
+}
+
+interface RunTiming {
+  label: string;
+  engine: string;
+  durationMs: number;
 }
 
 function firstColor(puzzle: CowPuzzle): ColorId {
@@ -93,6 +100,17 @@ function loadCropSettings(): CropSettings {
   }
 }
 
+function loadSolverPreference(): CowSolverId {
+  if (typeof window === "undefined") return "local";
+  const saved = window.localStorage.getItem(SOLVER_PREFERENCE_KEY);
+  return saved === "logic" ? "logic" : "local";
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms.toFixed(ms < 10 ? 1 : 0)} ms`;
+  return `${(ms / 1000).toFixed(2)} s`;
+}
+
 function StatusPill({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "good" | "warn" }) {
   return <span className={`pill ${tone}`}>{children}</span>;
 }
@@ -106,9 +124,11 @@ export default function App() {
   const [clusterThreshold, setClusterThreshold] = useState(initialCropSettings.clusterThreshold);
   const [runState, setRunState] = useState<RunState>("idle");
   const [message, setMessage] = useState("Upload a screenshot");
+  const [solverId, setSolverId] = useState<CowSolverId>(() => loadSolverPreference());
   const [solution, setSolution] = useState<CowSolution | null>(null);
   const [enumeration, setEnumeration] = useState<EnumerationReport | null>(null);
   const [analysis, setAnalysis] = useState<(AnalysisReport & { engine: string; message?: string }) | null>(null);
+  const [runTiming, setRunTiming] = useState<RunTiming | null>(null);
   const sampleRequestRef = useRef(0);
 
   const solutionCowSet = useMemo(() => {
@@ -133,6 +153,7 @@ export default function App() {
     setSolution(null);
     setEnumeration(null);
     setAnalysis(null);
+    setRunTiming(null);
   }
 
   function updatePuzzle(next: CowPuzzle) {
@@ -200,9 +221,12 @@ export default function App() {
     setMessage("Solving");
     resetDerived();
     try {
-      const result = solveWithLocalSolver(puzzle);
+      const startedAt = performance.now();
+      const result = solveCowPuzzle(puzzle, solverId);
+      const durationMs = performance.now() - startedAt;
       setSolution(result.solution);
-      setMessage(result.status === "sat" ? "Solved with local engine" : "No solution");
+      setRunTiming({ label: "Solve", engine: result.engine, durationMs });
+      setMessage(result.status === "sat" ? `Solved with ${result.engine}` : "No solution");
     } finally {
       setRunState("idle");
     }
@@ -213,9 +237,12 @@ export default function App() {
     setMessage("Enumerating");
     resetDerived();
     try {
-      const result = enumerateWithLocalSolver(puzzle, 500);
+      const startedAt = performance.now();
+      const result = enumerateCowPuzzle(puzzle, solverId, 500);
+      const durationMs = performance.now() - startedAt;
       setEnumeration(result);
       setSolution(result.solutions[0] ?? null);
+      setRunTiming({ label: "All", engine: result.engine, durationMs });
       setMessage(`${result.solutions.length} solution${result.solutions.length === 1 ? "" : "s"}${result.hitLimit ? " (limited)" : ""}`);
     } finally {
       setRunState("idle");
@@ -227,7 +254,10 @@ export default function App() {
     setMessage("Checking uniqueness");
     resetDerived();
     try {
-      const result = await isUnique(puzzle);
+      const startedAt = performance.now();
+      const result = await isUnique(puzzle, solverId);
+      const durationMs = performance.now() - startedAt;
+      setRunTiming({ label: "Unique", engine: result.engine, durationMs });
       setMessage(!result.hasSolution ? "No solution" : result.unique ? "Unique solution" : "Multiple solutions");
     } finally {
       setRunState("idle");
@@ -239,8 +269,11 @@ export default function App() {
     setMessage("Analyzing cells");
     resetDerived();
     try {
-      const result = await analyzeCells(puzzle, 500);
+      const startedAt = performance.now();
+      const result = await analyzeCells(puzzle, solverId, 500);
+      const durationMs = performance.now() - startedAt;
       setAnalysis(result);
+      setRunTiming({ label: "Analyze", engine: result.engine, durationMs });
       setMessage(`${result.solutionCount} solution${result.solutionCount === 1 ? "" : "s"} analyzed`);
     } finally {
       setRunState("idle");
@@ -272,6 +305,10 @@ export default function App() {
       // Storage may be unavailable in some private browsing contexts.
     }
   }, [crop, clusterThreshold]);
+
+  useEffect(() => {
+    window.localStorage.setItem(SOLVER_PREFERENCE_KEY, solverId);
+  }, [solverId]);
 
   return (
     <main className="app-shell">
@@ -538,6 +575,19 @@ export default function App() {
         </section>
 
         <aside className="panel result-panel">
+          <div className="solver-picker" aria-label="solver selection">
+            {solverOptions.map((option) => (
+              <button
+                key={option.id}
+                className={solverId === option.id ? "active" : ""}
+                type="button"
+                onClick={() => setSolverId(option.id)}
+                disabled={busy}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
           <div className="actions solve-actions">
             <button onClick={solve} disabled={busy}>
               <Play size={16} /> Solve
@@ -588,6 +638,14 @@ export default function App() {
               <div>{analysis.cells.forcedEmpty.length} forced empty</div>
               <div>{analysis.cells.undecided.length} undecided</div>
               <div>{analysis.engine}</div>
+            </div>
+          ) : null}
+
+          {runTiming ? (
+            <div className="summary timing-summary">
+              <div><strong>{formatDuration(runTiming.durationMs)}</strong> elapsed</div>
+              <div>{runTiming.label}</div>
+              <div>{runTiming.engine}</div>
             </div>
           ) : null}
         </aside>

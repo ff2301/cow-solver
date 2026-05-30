@@ -235,7 +235,8 @@ h2 {
   gap: 8px;
 }
 
-.size-presets button.active {
+.size-presets button.active,
+.solver-picker button.active {
   border-color: #17202a;
   background: #17202a;
   color: #ffffff;
@@ -446,6 +447,17 @@ code {
   display: grid;
   grid-template-columns: 1fr 1fr;
   margin-bottom: 14px;
+}
+
+.solver-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.timing-summary {
+  background: #fbfcfe;
 }
 
 .toggle-row label {

@@ -24,6 +24,7 @@ export interface CowSolution {
 }
 
 export type SolverStatus = "sat" | "unsat" | "unknown";
+export type CowSolverId = "local" | "logic";
 
 export interface SolveReport {
   status: SolverStatus;
